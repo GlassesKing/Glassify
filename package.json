@@ -1,0 +1,24 @@
+{
+  "name": "glasses-king-virtual-fitting",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "MediaPipe Face Landmarker 기반 안경 가상 피팅 웹 (추후 앱 래핑 및 기존 프로젝트 연동용)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.14",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "~5.6.2",
+    "vite": "^5.4.10"
+  }
+}
