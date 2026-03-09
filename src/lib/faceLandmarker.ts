@@ -28,7 +28,7 @@ export async function getFaceLandmarker(): Promise<FaceLandmarker> {
       delegate: 'GPU',
     },
     outputFaceBlendshapes: false,
-    outputFacialTransformationMatrix: false,
+    outputFacialTransformationMatrixes: false,
     numFaces: 1,
     runningMode: 'VIDEO',
   })
@@ -45,6 +45,7 @@ export function detectFaceLandmarks(
   timestamp: number
 ): LandmarkPoint[] | null {
   const result = landmarker.detectForVideo(video, timestamp)
-  if (!result.faceLandmarks?.length) return null
-  return result.faceLandmarks[0].map(convertToLandmarkPoint)
+  const first = result.faceLandmarks?.[0]
+  if (!first) return null
+  return first.map(convertToLandmarkPoint)
 }

@@ -7,7 +7,9 @@ import './App.css'
 
 function App() {
   const { stream, error, start, stop, facingMode, switchCamera } = useCamera()
-  const [selectedGlasses, setSelectedGlasses] = useState<GlassesProduct | null>(null)
+  const [selectedGlasses, setSelectedGlasses] = useState<GlassesProduct | null>(
+    () => sampleGlasses.find((g) => g.id === 'davich-muse04') ?? null
+  )
 
   return (
     <div className="app">

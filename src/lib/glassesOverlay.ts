@@ -67,6 +67,7 @@ export function drawGlasses(options: DrawGlassesOptions): void {
   const noseRoot = landmarks[GLASSES_LANDMARKS.noseRoot]
   const leftEyeOuter = landmarks[GLASSES_LANDMARKS.leftEyeOuter]
   const rightEyeOuter = landmarks[GLASSES_LANDMARKS.rightEyeOuter]
+  if (!leftTemple || !rightTemple || !noseRoot || !leftEyeOuter || !rightEyeOuter) return
 
   const left = normToCanvas(leftTemple.x, leftTemple.y, videoWidth, videoHeight, outputWidth, outputHeight, mirror)
   const right = normToCanvas(rightTemple.x, rightTemple.y, videoWidth, videoHeight, outputWidth, outputHeight, mirror)

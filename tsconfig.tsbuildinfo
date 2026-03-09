@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/types.ts","./src/vite-env.d.ts","./src/components/fittingview.tsx","./src/data/sampleglasses.ts","./src/hooks/usecamera.ts","./src/lib/facelandmarker.ts","./src/lib/facemesh.ts","./src/lib/glassesoverlay.ts"],"version":"5.6.3"}

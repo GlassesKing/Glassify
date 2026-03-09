@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { getFaceLandmarker, detectFaceLandmarks } from '../lib/faceLandmarker'
+import { initFaceMesh } from '../lib/faceMesh'
 import { drawGlasses } from '../lib/glassesOverlay'
 import type { GlassesProduct } from '../types'
 import type { LandmarkPoint } from '../types'
@@ -27,6 +27,7 @@ export function FittingView({ stream, selectedGlasses }: FittingViewProps) {
     if (!product?.imageUrl) return
     const img = new Image()
     img.crossOrigin = 'anonymous'
+    img.referrerPolicy = 'no-referrer'
     img.onload = () => {
       glassesImageRef.current = img
       setGlassesImageLoaded(true)
@@ -47,15 +48,17 @@ export function FittingView({ stream, selectedGlasses }: FittingViewProps) {
     video.srcObject = stream
     video.play().catch(() => {})
 
-    let landmarker: Awaited<ReturnType<typeof getFaceLandmarker>> | null = null
+    let faceMeshApi: Awaited<ReturnType<typeof initFaceMesh>> | null = null
     let ready = false
 
     const run = async () => {
       try {
-        landmarker = await getFaceLandmarker()
+        faceMeshApi = await initFaceMesh((landmarks) => {
+          lastLandmarksRef.current = landmarks
+        })
         ready = true
       } catch (e) {
-        console.error('Face Landmarker init failed', e)
+        console.error('Face Mesh init failed', e)
       }
     }
     run()
@@ -83,21 +86,21 @@ export function FittingView({ stream, selectedGlasses }: FittingViewProps) {
       ctx.drawImage(video, -cw, 0, cw, ch)
       ctx.restore()
 
-      if (ready && landmarker) {
-        const landmarks = detectFaceLandmarks(landmarker, video, performance.now())
-        if (landmarks) lastLandmarksRef.current = landmarks
+      if (ready && faceMeshApi) {
+        faceMeshApi.send(video).catch(() => {})
       }
 
       const landmarks = lastLandmarksRef.current
       const img = glassesImageRef.current
-      if (landmarks && img && selectedGlasses) {
+      const imageReady = img?.complete && img?.naturalWidth > 0
+      if (landmarks && landmarks.length >= 468 && img && imageReady && selectedGlasses) {
         drawGlasses({
           ctx,
           landmarks,
           videoWidth: vw,
           videoHeight: vh,
           glassesImage: img,
-          imageLoaded: glassesImageLoaded,
+          imageLoaded: true,
           outputWidth: cw,
           outputHeight: ch,
         })
