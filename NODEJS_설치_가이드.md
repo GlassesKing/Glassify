@@ -37,7 +37,8 @@ Node.js 설치가 끝나면 프로젝트 폴더에서:
 
 ```powershell
 cd c:\Users\kby20\IdeaProjects\Glassify
-npm install
+npm in[Glasses.glb](..%2F..%2FDownloads%2FGlasses.glb)
+[Glasses (1).glb](..%2F..%2FDownloads%2FGlasses%20%281%29.glb)stall
 npm run dev
 ```
 

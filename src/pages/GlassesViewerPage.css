@@ -1,0 +1,74 @@
+.glasses-viewer-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg, #0f0f0f);
+  color: var(--text, #e5e5e5);
+}
+
+.glasses-viewer-page-header {
+  flex-shrink: 0;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border, #2a2a2a);
+}
+
+.glasses-viewer-page-back {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--muted, #888);
+  text-decoration: none;
+}
+
+.glasses-viewer-page-back:hover {
+  color: var(--text, #e5e5e5);
+}
+
+.glasses-viewer-page-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.glasses-viewer-page-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted, #888);
+}
+
+.glasses-viewer-page-sub a {
+  color: var(--primary, #7c9cff);
+  text-decoration: none;
+}
+
+.glasses-viewer-page-sub a:hover {
+  text-decoration: underline;
+}
+
+.glasses-viewer-page-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 1rem;
+}
+
+.glasses-viewer-page-main .glasses-3d-viewer {
+  flex: 1;
+  min-height: 400px;
+}
+
+.glasses-viewer-page-footer {
+  flex-shrink: 0;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border, #2a2a2a);
+  font-size: 0.8rem;
+  color: var(--muted, #888);
+}
+
+.glasses-viewer-page-footer code {
+  padding: 0.15rem 0.35rem;
+  background: var(--surface, #1a1a1a);
+  border-radius: 4px;
+  font-size: 0.85em;
+}

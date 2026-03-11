@@ -1,0 +1,113 @@
+.glasses-3d-viewer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  background: var(--surface, #1a1a1a);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.glasses-3d-viewer-header {
+  flex-shrink: 0;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border, #333);
+}
+
+.glasses-3d-viewer-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.glasses-3d-viewer-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted, #888);
+}
+
+.glasses-3d-viewer-axes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-top: 0.5rem;
+}
+
+.glasses-3d-viewer-axis {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.glasses-3d-viewer-axis label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 1.2rem;
+}
+
+.glasses-3d-viewer-axis input[type="range"] {
+  width: 80px;
+}
+
+.glasses-3d-viewer-axis span {
+  font-size: 0.8rem;
+  color: var(--muted, #888);
+  min-width: 2.2rem;
+}
+
+.glasses-3d-viewer-roll {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.glasses-3d-viewer-roll label {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.glasses-3d-viewer-roll input[type="range"] {
+  flex: 1;
+  min-width: 80px;
+  max-width: 160px;
+}
+
+.glasses-3d-viewer-roll-value {
+  font-size: 0.85rem;
+  color: var(--muted, #888);
+  min-width: 2.5rem;
+}
+
+.glasses-3d-viewer-reset {
+  margin-left: 10px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  background: var(--border, #333);
+  color: var(--muted, #ccc);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.glasses-3d-viewer-reset:hover {
+  background: #444;
+  color: #fff;
+}
+
+.glasses-3d-viewer-canvas {
+  flex: 1;
+  min-height: 300px;
+  height: 400px;
+  width: 100%;
+  position: relative;
+}
+
+.glasses-3d-viewer-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}

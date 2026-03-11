@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { FittingView } from './components/FittingView'
 import { useCamera } from './hooks/useCamera'
 import { sampleGlasses } from './data/sampleGlasses'
@@ -10,12 +11,14 @@ function App() {
   const [selectedGlasses, setSelectedGlasses] = useState<GlassesProduct | null>(
     () => sampleGlasses.find((g) => g.id === 'davich-muse04') ?? null
   )
+  const [faceWidthCm, setFaceWidthCm] = useState(15)
 
   return (
     <div className="app">
       <header className="header">
         <h1>Glasses King</h1>
         <p className="subtitle">가상 피팅</p>
+        <Link to="/viewer" className="header-viewer-link">3D 안경 뷰어 (URL 추출)</Link>
       </header>
 
       <main className="main">
@@ -34,9 +37,25 @@ function App() {
           ) : (
             <>
               <div className="fitting-wrapper">
-                <FittingView stream={stream} selectedGlasses={selectedGlasses} />
+                <FittingView
+                  stream={stream}
+                  selectedGlasses={selectedGlasses}
+                  faceWidthCm={faceWidthCm}
+                />
               </div>
               <div className="camera-actions">
+                <label className="face-width-label">
+                  얼굴 너비 (cm):{' '}
+                  <input
+                    type="number"
+                    min={12}
+                    max={22}
+                    step={0.5}
+                    value={faceWidthCm}
+                    onChange={(e) => setFaceWidthCm(Number(e.target.value) || 15)}
+                    title="양 관자 사이 거리 등. 측정해서 넣으면 안경 크기가 실제 비율에 가깝게 표시됩니다."
+                  />
+                </label>
                 <button type="button" className="btn btn-secondary" onClick={switchCamera}>
                   {facingMode === 'user' ? '후면 카메라' : '전면 카메라'}
                 </button>

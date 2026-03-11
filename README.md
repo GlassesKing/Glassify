@@ -6,8 +6,9 @@ MediaPipe **Face Landmarker**로 얼굴 랜드마크를 인식하고, 선택한 
 ## 기술 스택
 
 - **Vite** + **React 18** + **TypeScript**
-- **@mediapipe/tasks-vision** – Face Landmarker (468개 얼굴 랜드마크)
-- 카메라 스트림 → Face Landmarker → 캔버스에 안경 이미지 오버레이
+- **@mediapipe/face_mesh** – Face Mesh + Face Geometry (468 랜드마크, 3D pose matrix)
+- **Three.js** – 3D 안경 렌더링
+- 카메라 → Face Mesh (enableFaceGeometry) → pose matrix → Three.js 3D 안경 오버레이
 
 ## 빠른 시작
 

@@ -23,6 +23,18 @@
   color: var(--muted);
 }
 
+.header-viewer-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.header-viewer-link:hover {
+  color: var(--text, inherit);
+}
+
 .main {
   flex: 1;
   display: grid;
@@ -61,6 +73,24 @@
   color: #f87171;
 }
 
+.face-width-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.face-width-label input {
+  width: 3.5rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: var(--surface);
+  color: inherit;
+}
+
 .fitting-wrapper {
   flex: 1;
   min-height: 200px;
@@ -74,6 +104,38 @@
   width: 100%;
   height: 100%;
   min-height: 300px;
+  position: relative;
+}
+
+.fitting-mirror-wrap {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: block;
+}
+
+.landmark-toggle {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 10;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.landmark-toggle:hover {
+  background: var(--border);
+}
+
+.fitting-canvas-3d {
+  display: block;
 }
 
 .fitting-canvas {

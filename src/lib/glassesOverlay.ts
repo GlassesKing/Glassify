@@ -1,9 +1,13 @@
 /**
- * 얼굴 랜드마크 기반 안경 오버레이 그리기
- * - 정규화 좌표(0~1)를 캔버스 픽셀 좌표로 변환 후 안경 이미지 배치
+ * 얼굴 랜드마크 기반 안경 오버레이
+ * - 얼굴 평면에 붙어 보이도록 회전·크기만 적용 (원근 없음, 앞으로 뻗지 않음)
+ * - 이미지 중앙(프론트만) 크롭으로 안경다리 제거
+ * - 실제 배치 수치는 glassesScreenTransform 과 동일
  */
 import type { LandmarkPoint } from '../types'
-import { GLASSES_LANDMARKS } from '../types'
+import { getGlassesScreenTransform } from './glassesScreenTransform'
+
+const DEFAULT_FRONT_CROP_RATIO = 0.58
 
 export interface DrawGlassesOptions {
   ctx: CanvasRenderingContext2D
@@ -11,40 +15,13 @@ export interface DrawGlassesOptions {
   videoWidth: number
   videoHeight: number
   glassesImage: HTMLImageElement
-  /** 안경 이미지가 로드된 상태인지 */
   imageLoaded: boolean
-  /** 캔버스에 그리는 영역 (미러링된 비디오 기준) */
   outputWidth: number
   outputHeight: number
-}
-
-/** 두 점 사이 각도(라디안), 수평 기준 */
-function angleBetween(
-  p1: LandmarkPoint,
-  p2: LandmarkPoint
-): number {
-  return Math.atan2(p2.y - p1.y, p2.x - p1.x)
-}
-
-/** 정규화 좌표 → 캔버스 좌표 (비디오가 캔버스에 맞춰 스케일된 경우) */
-function normToCanvas(
-  x: number,
-  y: number,
-  videoWidth: number,
-  videoHeight: number,
-  outputWidth: number,
-  outputHeight: number,
-  mirror: boolean
-): { x: number; y: number } {
-  const scaleX = outputWidth / videoWidth
-  const scaleY = outputHeight / videoHeight
-  const scale = Math.min(scaleX, scaleY)
-  const offsetX = (outputWidth - videoWidth * scale) / 2
-  const offsetY = (outputHeight - videoHeight * scale) / 2
-  let px = x * videoWidth * scale + offsetX
-  const py = y * videoHeight * scale + offsetY
-  if (mirror) px = outputWidth - px
-  return { x: px, y: py }
+  frameWidthCm?: number
+  faceWidthCm?: number
+  /** 이미지 가로 중앙 비율(0~1). 작으면 다리 끝 더 숨김, 크면 옆면 더 보임. 기본 0.58 */
+  frontCropRatio?: number
 }
 
 export function drawGlasses(options: DrawGlassesOptions): void {
@@ -57,33 +34,43 @@ export function drawGlasses(options: DrawGlassesOptions): void {
     imageLoaded,
     outputWidth,
     outputHeight,
+    frameWidthCm,
+    faceWidthCm = 15,
+    frontCropRatio = DEFAULT_FRONT_CROP_RATIO,
   } = options
+
+  const cropRatio = Math.max(0.35, Math.min(0.95, frontCropRatio))
+  const cropOffset = (1 - cropRatio) / 2
 
   if (!imageLoaded || landmarks.length < 468) return
 
-  const mirror = true
-  const leftTemple = landmarks[GLASSES_LANDMARKS.leftTemple]
-  const rightTemple = landmarks[GLASSES_LANDMARKS.rightTemple]
-  const noseRoot = landmarks[GLASSES_LANDMARKS.noseRoot]
-  const leftEyeOuter = landmarks[GLASSES_LANDMARKS.leftEyeOuter]
-  const rightEyeOuter = landmarks[GLASSES_LANDMARKS.rightEyeOuter]
-  if (!leftTemple || !rightTemple || !noseRoot || !leftEyeOuter || !rightEyeOuter) return
+  const transform = getGlassesScreenTransform(landmarks, videoWidth, videoHeight, outputWidth, outputHeight, {
+    frameWidthCm,
+    faceWidthCm,
+    frontCropRatio,
+    mirror: false,
+  })
+  if (!transform) return
 
-  const left = normToCanvas(leftTemple.x, leftTemple.y, videoWidth, videoHeight, outputWidth, outputHeight, mirror)
-  const right = normToCanvas(rightTemple.x, rightTemple.y, videoWidth, videoHeight, outputWidth, outputHeight, mirror)
-  const center = normToCanvas(noseRoot.x, noseRoot.y, videoWidth, videoHeight, outputWidth, outputHeight, mirror)
-  const leftEye = normToCanvas(leftEyeOuter.x, leftEyeOuter.y, videoWidth, videoHeight, outputWidth, outputHeight, mirror)
-  const rightEye = normToCanvas(rightEyeOuter.x, rightEyeOuter.y, videoWidth, videoHeight, outputWidth, outputHeight, mirror)
+  let width = transform.widthPx
+  let height = transform.heightPx
 
-  const width = Math.hypot(right.x - left.x, right.y - left.y) * 1.35
-  const eyeDist = Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y)
-  const height = eyeDist * 1.8
+  // frameWidthCm 사용 시 drawGlasses는 이미지 비율로 높이를 맞춤
+  if (frameWidthCm != null && frameWidthCm > 0 && faceWidthCm > 0) {
+    const imgW = glassesImage.naturalWidth || 1
+    const imgH = glassesImage.naturalHeight || 1
+    const cropW = cropRatio * imgW
+    height = width * (imgH / cropW)
+  }
 
-  const rotation = angleBetween(leftTemple, rightTemple)
+  const imgW = glassesImage.naturalWidth || 1
+  const imgH = glassesImage.naturalHeight || 1
+  const cropX = cropOffset * imgW
+  const cropW = cropRatio * imgW
 
   ctx.save()
-  ctx.translate(center.x, center.y)
-  ctx.rotate(rotation)
-  ctx.drawImage(glassesImage, -width / 2, -height / 2, width, height)
+  ctx.translate(transform.centerPx, transform.centerPy)
+  ctx.rotate(transform.rotation)
+  ctx.drawImage(glassesImage, cropX, 0, cropW, imgH, -width / 2, -height / 2, width, height)
   ctx.restore()
 }
