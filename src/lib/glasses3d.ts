@@ -86,7 +86,9 @@ export class Glasses3DRenderer {
     const loader = new GLTFLoader()
     try {
       const gltf = await loader.loadAsync(url)
-      while (this.glasses.children.length > 0) this.glasses.remove(this.glasses.children[0])
+      while (this.glasses.children.length > 0) { // @ts-ignore
+        this.glasses.remove(this.glasses.children[0])
+      }
       const model = gltf.scene
       model.scale.setScalar(0.5)
       model.rotation.x = -Math.PI / 2
