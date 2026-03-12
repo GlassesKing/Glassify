@@ -68,9 +68,9 @@ export async function initFaceLandmarker(
   const faceLandmarker = await FaceLandmarker.createFromOptions(wasmFileset, {
     baseOptions: { modelAssetPath: MODEL_URL },
     numFaces: 1,
-    minFaceDetectionConfidence: 0.5,
-    minFacePresenceConfidence: 0.5,
-    minTrackingConfidence: 0.5,
+    minFaceDetectionConfidence: 0.3,
+    minFacePresenceConfidence: 0.3,
+    minTrackingConfidence: 0.3,
     runningMode: 'VIDEO',
     outputFacialTransformationMatrixes: true,
   })

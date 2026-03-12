@@ -1,4 +1,4 @@
-import type { GlassesProduct } from '../types'
+import type {GlassesProduct} from '../types'
 
 /**
  * 샘플 안경 목록 (추후 기존 쇼핑몰 API로 교체)
@@ -16,46 +16,46 @@ export const GLASSES_3D_MODEL = `${GLASSES_BASE}/glasses.glb`
 export const GLASSES_1_GLB = `${GLASSES_BASE}/glasses1.glb`
 
 export const sampleGlasses: GlassesProduct[] = [
-  {
-    id: 'davich-muse04',
-    name: 'MUSE 04 (다비치마켓)',
-    imageUrl: GLASSES_IMAGE,
-    dimensionsMm: {
-      totalLength: 145,
-      width: 46,
-      height: 44,
-      bridge: 24,
-      templeLength: 150,
+    // {
+    //   id: 'davich-muse04',
+    //   name: 'MUSE 04 (다비치마켓)',
+    //   imageUrl: GLASSES_IMAGE,
+    //   dimensionsMm: {
+    //     totalLength: 145,
+    //     width: 46,
+    //     height: 44,
+    //     bridge: 24,
+    //     templeLength: 150,
+    //   },
+    //   frameWidthCm: 14.5,
+    //   // 0.5에 가깝게: 다리 끝 더 숨김 / 0.7에 가깝게: 옆면 더 보임. 이미지에 따라 조정
+    //   frontCropRatio: 0.65,
+    // },
+    {
+        id: 'sample-3d',
+        name: 'GLB 안경1',
+        imageUrl: GLASSES_IMAGE,
+        modelUrl: GLASSES_3D_MODEL,
     },
-    frameWidthCm: 14.5,
-    // 0.5에 가깝게: 다리 끝 더 숨김 / 0.7에 가깝게: 옆면 더 보임. 이미지에 따라 조정
-    frontCropRatio: 0.65,
-  },
-  {
-    id: 'sample-1',
-    name: '클래식 블랙',
-    imageUrl: GLASSES_IMAGE,
-  },
-  {
-    id: 'sample-2',
-    name: '라운드 골드',
-    imageUrl: GLASSES_IMAGE,
-  },
-  {
-    id: 'sample-3',
-    name: '캐틀아이',
-    imageUrl: GLASSES_IMAGE,
-  },
-  {
-    id: 'sample-3d',
-    name: '3D 안경 (glb)',
-    imageUrl: GLASSES_IMAGE,
-    modelUrl: GLASSES_3D_MODEL,
-  },
-  {
-    id: 'glasses1-3d',
-    name: 'GLB 안경 (가상 피팅)',
-    imageUrl: GLASSES_IMAGE,
-    modelUrl: GLASSES_1_GLB,
-  },
+    {
+        id: 'glasses1-3d',
+        name: 'GLB 안경2',
+        imageUrl: GLASSES_IMAGE,
+        modelUrl: GLASSES_1_GLB,
+    },
+    {
+        id: 'default-frame',
+        name: '기본 테두리',
+        imageUrl: GLASSES_IMAGE,
+        useDefaultMeshOnly: true,
+        dimensionsMm: {
+            totalLength: 145,
+            width: 46,
+            height: 44,
+            bridge: 24,
+            templeLength: 150,
+        },
+        frameWidthCm: 14.5, // 14.5 // 0.5에 가깝게: 다리 끝 더 숨김 / 0.7에 가깝게: 옆면 더 보임. 이미지에 따라 조정
+        frontCropRatio: 0.1,
+    },
 ]

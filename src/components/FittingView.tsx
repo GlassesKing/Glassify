@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { initFaceLandmarker } from '../lib/faceLandmarker'
 import { Glasses3DRenderer } from '../lib/glasses3d'
+import { getCenterGlassesFrame } from '../lib/glassesDetection'
 import { drawGlasses } from '../lib/glassesOverlay'
 import type { GlassesProduct } from '../types'
 import type { FaceLandmarkerResult } from '../lib/faceLandmarker'
@@ -56,6 +57,8 @@ export function FittingView({ stream, selectedGlasses, faceWidthCm = 15 }: Fitti
     video.play().catch(() => {})
 
     let faceLandmarkerApi: Awaited<ReturnType<typeof initFaceLandmarker>> | null = null
+    let useVideoFrameCallback = false
+    let lastSentTime = -1
 
     const run = async () => {
       try {
@@ -73,6 +76,23 @@ export function FittingView({ stream, selectedGlasses, faceWidthCm = 15 }: Fitti
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    let videoFrameId: number | undefined
+    const reqVFC = (video as HTMLVideoElement & { requestVideoFrameCallback?: (cb: (now: number, metadata: unknown) => void) => number }).requestVideoFrameCallback
+    const cancelVFC = typeof (video as HTMLVideoElement & { cancelVideoFrameCallback?: (id: number) => void }).cancelVideoFrameCallback === 'function'
+      ? (id: number) => (video as HTMLVideoElement & { cancelVideoFrameCallback: (id: number) => void }).cancelVideoFrameCallback(id)
+      : () => {}
+
+    if (typeof reqVFC === 'function') {
+      useVideoFrameCallback = true
+      const scheduleNext = () => {
+        if (faceLandmarkerApiRef.current && video.readyState >= 2) {
+          faceLandmarkerApiRef.current.send(video).catch(() => {})
+        }
+        videoFrameId = reqVFC.call(video, scheduleNext)
+      }
+      videoFrameId = reqVFC.call(video, scheduleNext)
+    }
+
     const draw = () => {
       if (!video || !canvas || !ctx) return
 
@@ -88,8 +108,9 @@ export function FittingView({ stream, selectedGlasses, faceWidthCm = 15 }: Fitti
       const cw = canvas.width
       const ch = canvas.height
 
-      const useSimpleOverlay = selectedGlasses && !selectedGlasses.modelUrl
-      const wantModelUrl = selectedGlasses?.modelUrl ?? null
+      const useDefaultMeshOnly = selectedGlasses?.useDefaultMeshOnly === true
+      const useSimpleOverlay = selectedGlasses && !selectedGlasses.modelUrl && !useDefaultMeshOnly
+      const wantModelUrl = useDefaultMeshOnly ? null : (selectedGlasses?.modelUrl ?? null)
       if (canvasGlasses) {
         canvasGlasses.width = cw
         canvasGlasses.height = ch
@@ -132,8 +153,12 @@ export function FittingView({ stream, selectedGlasses, faceWidthCm = 15 }: Fitti
 
       ctx.drawImage(video, 0, 0, cw, ch)
 
-      if (ready && faceLandmarkerApi) {
-        faceLandmarkerApi.send(video).catch(() => {})
+      if (ready && faceLandmarkerApi && !useVideoFrameCallback) {
+        const t = video.currentTime
+        if (t !== lastSentTime) {
+          lastSentTime = t
+          faceLandmarkerApi.send(video).catch(() => {})
+        }
       }
 
       const result = lastResultRef.current
@@ -157,19 +182,47 @@ export function FittingView({ stream, selectedGlasses, faceWidthCm = 15 }: Fitti
       const imageReady = img?.complete && img?.naturalWidth > 0
       const hasFaceForGlasses = result?.landmarks && result.landmarks.length >= 468
 
-      if (selectedGlasses?.modelUrl && renderer && !hasFaceForGlasses) {
+      if ((selectedGlasses?.modelUrl || useDefaultMeshOnly) && renderer && !hasFaceForGlasses) {
         renderer.clearToTransparent()
       }
 
       if (selectedGlasses && cw > 0 && ch > 0 && hasFaceForGlasses) {
-        if (renderer) {
-          if (img && imageReady && !selectedGlasses.modelUrl) {
+        if (useSimpleOverlay && img && imageReady) {
+          const ctxGlasses = canvasGlasses?.getContext('2d')
+          if (ctxGlasses) {
+            ctxGlasses.clearRect(0, 0, cw, ch)
+            drawGlasses({
+              ctx: ctxGlasses,
+              landmarks: result.landmarks,
+              videoWidth: vw,
+              videoHeight: vh,
+              glassesImage: img,
+              imageLoaded: true,
+              outputWidth: cw,
+              outputHeight: ch,
+              frameWidthCm:
+                selectedGlasses.frameWidthCm ??
+                (selectedGlasses.dimensionsMm
+                  ? selectedGlasses.dimensionsMm.totalLength / 10
+                  : undefined),
+              faceWidthCm,
+              frontCropRatio: selectedGlasses.frontCropRatio,
+            })
+          }
+        } else if (renderer) {
+          if (img && imageReady && !selectedGlasses.modelUrl && !useDefaultMeshOnly) {
             if (lastTextureImageRef.current !== img) {
               renderer.setTexture(img)
               lastTextureImageRef.current = img
             }
           }
-          // GLB: 항상 랜드마크(눈·관자·코뿌리) 기준으로 배치. 변환 행렬은 좌표계/스케일이 안 맞아서 쓰지 않음.
+          if (useDefaultMeshOnly && img && imageReady) {
+            if (lastTextureImageRef.current !== img) {
+              const frameToUse = getCenterGlassesFrame(img)
+              renderer.setTextureOnDefaultFrame(img, frameToUse)
+              lastTextureImageRef.current = img
+            }
+          }
           if (selectedGlasses.modelUrl) {
             renderer.renderWithLandmarks(result.landmarks, vw, vh, cw, ch, {
               frameWidthCm:
@@ -180,7 +233,7 @@ export function FittingView({ stream, selectedGlasses, faceWidthCm = 15 }: Fitti
               faceWidthCm,
               frontCropRatio: selectedGlasses.frontCropRatio,
             })
-          } else if (result.transformationMatrix && result.transformationMatrix.length === 16) {
+          } else if (result.transformationMatrix && result.transformationMatrix.length === 16 && !useDefaultMeshOnly) {
             renderer.renderWithPose(result.transformationMatrix)
           } else {
             renderer.renderWithLandmarks(result.landmarks, vw, vh, cw, ch)
@@ -195,6 +248,7 @@ export function FittingView({ stream, selectedGlasses, faceWidthCm = 15 }: Fitti
 
     return () => {
       cancelAnimationFrame(rafRef.current)
+      if (videoFrameId !== undefined && cancelVFC) cancelVFC(videoFrameId)
       video.srcObject = null
       faceLandmarkerApiRef.current = null
       glasses3dRef.current?.dispose()

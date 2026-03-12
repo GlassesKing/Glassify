@@ -6,6 +6,7 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import type { LandmarkPoint } from '../types'
+import type { DetectedGlassesFrame } from './glassesDetection'
 import { getGlassesScreenTransform } from './glassesScreenTransform'
 
 const FOV = 100
@@ -34,6 +35,8 @@ const GLASSES_ROTATION_X = 1.5
 const GLASSES_ROTATION_Y = 0
 /** 모델 기준 폭(월드). 스케일 조정. GLB마다 조정 가능 */
 const REFERENCE_MODEL_WIDTH = 0.6
+/** 스무딩 강도 (0=없음, 0.2~0.4 권장). 클수록 부드럽고 반응은 느려짐 */
+const SMOOTHING_FACTOR = 0.28
 
 export class Glasses3DRenderer {
   private scene: THREE.Scene
@@ -45,6 +48,15 @@ export class Glasses3DRenderer {
   private modelLoaded = false
   private texturePlane: THREE.Mesh | null = null
   private textureMap: THREE.Texture | null = null
+  /** 기본 테두리 합성: 테두리 그룹 안에 넣은 좌/우 렌즈 원 메시 + 텍스처 */
+  private defaultFrameLensGroup: THREE.Group | null = null
+  private defaultFrameTextureMaps: THREE.Texture[] = []
+  /** 스무딩용 이전 값 (흔들림 방지) */
+  private smoothWx = 0
+  private smoothWy = 0
+  private smoothS = 0.3
+  private smoothAngleZ = 0
+  private smoothReady = false
 
   constructor(options: Glasses3DRendererOptions) {
     const { canvas, videoWidth, videoHeight, mirror = true, modelUrl } = options
@@ -105,6 +117,7 @@ export class Glasses3DRenderer {
    * 2D 안경 이미지를 3D 평면 텍스처로 설정 (pose matrix로 자연스러운 원근)
    */
   setTexture(img: HTMLImageElement): void {
+    this.clearDefaultFrameTexture()
     while (this.glasses.children.length > 0) {
       const child = this.glasses.children[0]
       if (!child) break
@@ -150,6 +163,125 @@ export class Glasses3DRenderer {
     this.modelLoaded = true
   }
 
+  /**
+   * 기본 테두리를 뼈대로, 안경 사진을 테두리 그룹 안 렌즈 자리에 합성.
+   * detectedFrame이 있으면 인식한 안경 테두리 영역만 기본 테두리 크기에 1:1로 맞춤.
+   */
+  setTextureOnDefaultFrame(
+    img: HTMLImageElement,
+    detectedFrame?: DetectedGlassesFrame | null
+  ): void {
+    if (this.glasses.children.length === 0) return
+    this.clearDefaultFrameTexture()
+
+    const templeDistance = 0.12
+    const lensInnerRadius = templeDistance / 2
+    const imgW = img.naturalWidth || 1
+    const imgH = img.naturalHeight || 1
+
+    let leftU: number
+    let rightU: number
+    let vOff: number
+    let halfRepeatU: number
+    let repeatV: number
+
+    if (detectedFrame && detectedFrame.width > 0 && detectedFrame.height > 0) {
+      const { x, y, width, height } = detectedFrame
+      leftU = x / imgW
+      rightU = (x + width / 2) / imgW
+      vOff = y / imgH
+      halfRepeatU = (width / 2) / imgW
+      repeatV = height / imgH
+    } else {
+      const frameW = 0.12
+      const frameH = 0.08
+      const frameAspect = frameW / frameH
+      const imgAspect = imgW / imgH
+      const scaleFactor = Math.max(
+        imgAspect / frameAspect,
+        frameAspect / imgAspect,
+        1
+      )
+      const r = 1 / scaleFactor
+      leftU = 0.25 * (1 - r)
+      rightU = 0.5 + 0.25 * (1 - r)
+      vOff = 0.5 * (1 - r)
+      halfRepeatU = 0.5 * r
+      repeatV = 1 * r
+    }
+
+    const leftTex = new THREE.CanvasTexture(img)
+    leftTex.flipY = false
+    leftTex.offset.set(rightU, vOff)
+    leftTex.repeat.set(halfRepeatU, repeatV)
+    leftTex.needsUpdate = true
+    const rightTex = new THREE.CanvasTexture(img)
+    rightTex.flipY = false
+    rightTex.offset.set(leftU, vOff)
+    rightTex.repeat.set(halfRepeatU, repeatV)
+    rightTex.needsUpdate = true
+    this.defaultFrameTextureMaps.push(leftTex, rightTex)
+
+    const circleGeom = new THREE.CircleGeometry(lensInnerRadius, 32)
+    const leftMat = new THREE.MeshBasicMaterial({
+      map: leftTex,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: true,
+    })
+    const rightMat = new THREE.MeshBasicMaterial({
+      map: rightTex,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: true,
+    })
+    const leftCircle = new THREE.Mesh(circleGeom.clone(), leftMat)
+    const rightCircle = new THREE.Mesh(circleGeom.clone(), rightMat)
+    leftCircle.rotation.x = -Math.PI / 2
+    rightCircle.rotation.x = -Math.PI / 2
+    leftCircle.position.set(templeDistance / 2, 0.01, 0.02)
+    rightCircle.position.set(-templeDistance / 2, 0.01, 0.02)
+    leftCircle.renderOrder = 1
+    rightCircle.renderOrder = 1
+
+    const lensGroup = new THREE.Group()
+    lensGroup.add(leftCircle, rightCircle)
+    lensGroup.scale.setScalar(1) // 안경크기
+    this.defaultFrameLensGroup = lensGroup
+
+    const defaultMesh = this.glasses.children[0] as THREE.Group
+    defaultMesh.add(lensGroup)
+    for (let i = 0; i < 3; i++) {
+      const child = defaultMesh.children[i]
+      if (child) child.visible = false
+    }
+  }
+
+  private clearDefaultFrameTexture(): void {
+    if (this.glasses.children.length > 0) {
+      const defaultMesh = this.glasses.children[0] as THREE.Group
+      for (let i = 0; i < 3; i++) {
+        const child = defaultMesh.children[i]
+        if (child) child.visible = true
+      }
+    }
+    if (this.defaultFrameLensGroup && this.glasses.children.length > 0) {
+      const defaultMesh = this.glasses.children[0] as THREE.Group
+      defaultMesh.remove(this.defaultFrameLensGroup)
+      this.defaultFrameLensGroup.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) {
+          obj.geometry?.dispose()
+          const mat = obj.material
+          if (Array.isArray(mat)) mat.forEach((m) => m.dispose())
+          else mat?.dispose()
+        }
+      })
+      this.defaultFrameLensGroup = null
+    }
+    this.defaultFrameTextureMaps.forEach((t) => t.dispose())
+    this.defaultFrameTextureMaps = []
+  }
+
   private createDefaultGlassesMesh(): THREE.Group {
     const group = new THREE.Group()
 
@@ -180,12 +312,12 @@ export class Glasses3DRenderer {
       new THREE.CylinderGeometry(0.005, 0.005, templeDistance * 0.6, 8),
       material.clone()
     )
-    bridge.rotation.z = Math.PI / 2
     bridge.position.y = 0.01
 
     group.add(leftLens, rightLens, bridge)
     group.scale.setScalar(2.5)
-    // 랜드마크(ortho) 배치 시 카메라를 향하도록 XY 평면에 둠. pose 배치 시에는 matrix로 덮어씀.
+    group.rotation.z = Math.PI
+    group.rotation.x = Math.PI
     return group
   }
 
@@ -244,23 +376,37 @@ export class Glasses3DRenderer {
     let wx = ndcX * d * tanHalfFov * aspect
     let wy = ndcY * d * tanHalfFov
 
-    // 위치 미세 조정 (GLASSES_OFFSET_X/Y, GLASSES_Z 상단에서 수정)
     wx += GLASSES_OFFSET_X
     wy += GLASSES_OFFSET_Y
-
-    // widthPx만큼 보이게 할 스케일: z=d에서 1월드단위 = (cw / (2*d*tanHalfFov*aspect)) 픽셀
     const worldUnitsPerPx = (2 * d * tanHalfFov * aspect) / cw
     const s = Math.max(0.05, Math.min(2, (widthPx * worldUnitsPerPx) / REFERENCE_MODEL_WIDTH))
-
     const angleZ = this.mirror ? -rotation : rotation
+
+    // 스무딩: 랜드마크 흔들림으로 인한 덜덜거림 방지 (스노우 필터처럼 부드럽게)
+    const t = SMOOTHING_FACTOR
+    if (this.smoothReady) {
+      this.smoothWx += (wx - this.smoothWx) * t
+      this.smoothWy += (wy - this.smoothWy) * t
+      this.smoothS += (s - this.smoothS) * t
+      let dAngle = angleZ - this.smoothAngleZ
+      while (dAngle > Math.PI) dAngle -= 2 * Math.PI
+      while (dAngle < -Math.PI) dAngle += 2 * Math.PI
+      this.smoothAngleZ += dAngle * t
+    } else {
+      this.smoothWx = wx
+      this.smoothWy = wy
+      this.smoothS = s
+      this.smoothAngleZ = angleZ
+      this.smoothReady = true
+    }
 
     this.glasses.matrix.identity()
     this.glasses.matrix.compose(
-      new THREE.Vector3(wx, wy, GLASSES_Z),
+      new THREE.Vector3(this.smoothWx, this.smoothWy, GLASSES_Z),
       new THREE.Quaternion().setFromEuler(
-        new THREE.Euler(GLASSES_ROTATION_X, GLASSES_ROTATION_Y, angleZ)
+        new THREE.Euler(GLASSES_ROTATION_X, GLASSES_ROTATION_Y, this.smoothAngleZ)
       ),
-      new THREE.Vector3(s, s, s)
+      new THREE.Vector3(this.smoothS, this.smoothS, this.smoothS)
     )
     this.glasses.matrixAutoUpdate = false
 
@@ -269,6 +415,7 @@ export class Glasses3DRenderer {
 
   /** 얼굴 없을 때 캔버스를 투명하게 비우기 */
   clearToTransparent(): void {
+    this.smoothReady = false
     this.renderer.setClearColor(0x000000, 0)
     this.renderer.clear(true, true, false)
   }
@@ -289,6 +436,7 @@ export class Glasses3DRenderer {
 
   dispose(): void {
     this.renderer.dispose()
+    this.clearDefaultFrameTexture()
     this.textureMap?.dispose()
     this.textureMap = null
     this.glasses.traverse((obj: THREE.Object3D) => {

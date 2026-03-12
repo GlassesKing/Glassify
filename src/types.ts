@@ -27,6 +27,8 @@ export interface GlassesProduct {
   imageUrl: string
   /** 3D 모델 URL (.glb). Face Geometry 3D 모드에서 사용. 없으면 기본 geometry */
   modelUrl?: string | null
+  /** true면 GLB 없이 3D 기본 테두리(고리+다리)만 표시 */
+  useDefaultMeshOnly?: boolean
   /** 노즈브릿지~템플까지 비율 (이미지 비율에 맞춰 스케일 조정용) */
   aspectRatio?: number
   /** 안경테 가로 폭 (cm). 있으면 얼굴 대비 실제 크기로 표시. dimensionsMm 있으면 총길이에서 자동 계산 */
